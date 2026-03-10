@@ -1,16 +1,21 @@
-# GitCity - GitHub Voxel World Visualizer
+# GitCity - Virtual Earth GitHub Visualizer
 
-Explore your GitHub profile as a 3D voxel city!
+GitCity transforms your GitHub profile into a **Virtual Earth** where programming languages are **Countries** and repositories are **Cities** within them. 
 
-## Features
-- **Biomes by Language**: Each programming language is assigned a unique biome.
-- **Repository Buildings**:
-  - **Height**: Based on repository size (logarithmic).
-  - **Width**: Based on stars (square root).
-  - **Beacons**: Buildings glow if they have open issues.
-- **First-Person Exploration**: WASD to walk, Space to jump, mouse to look.
-- **Interactive UI**: View repository details via an in-game HUD (powered by ImGui).
-- **Infinite Potential**: Chunk-based voxel engine for future expansion.
+## ✨ Features
+- **🌍 Virtual Earth Structure**:
+  - **Languages = Countries**: Each programming language is its own island/continent in a vast voxel ocean.
+  - **Repositories = Cities/Buildings**: Each repo is a skyscraper with unique dimensions:
+    - **Height**: Based on the repository's code size (logarithmic).
+    - **Width**: Based on stars + activity (square root).
+    - **Lit Windows**: Buildings feature emissive windows (yellow voxels) representing development activity.
+    - **Glowing Beacons**: Repos with open issues have glowing glass beacons on their roofs.
+- **🚀 Dynamic Exploration**:
+  - **Orbit View**: Start in space and see your "Language Countries" from high altitude.
+  - **Cinematic Dive**: Left-click any country to perform a smooth, cinematic dive from space into that city.
+  - **M-Key Overview**: Instantly toggle between the global map overview and local city exploration.
+- **🏷️ Floating Labels**: Repo names fade into view as you approach buildings, with high-altitude headers for each country.
+- **📊 Stats HUD**: Press **TAB** to toggle a detailed statistics panel for the nearest repository.
 
 ## Tech Stack
 - C++17
