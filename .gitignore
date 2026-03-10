@@ -1,0 +1,21 @@
+# Build directories
+build/
+bin/
+obj/
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Project specific
+gitcity.exe
+run_log.txt
+run_log_final.txt
+run_log_url.txt
+
+# MSYS2/MinGW leftovers
+*.o
+*.a
+*.exe
