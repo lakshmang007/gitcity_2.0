@@ -6,22 +6,24 @@
 #include <glm/glm.hpp>
 
 struct RepoData {
-    std::string name;
-    std::string description;
-    std::string language;
+    std::string name = "";
+    std::string description = "";
+    std::string language = "Unknown";
     int stars = 0;
     int forks = 0;
     int openIssues = 0;
-    long long size = 0;
-    std::string updatedAt;
+    int size = 0;
+    std::string updatedAt = "";
     std::vector<std::string> topics;
-    int commitCount = 0;
-    
-    // Derived dimensions
-    float height = 3.0f;
-    float width = 2.0f;
+
+    // Computed visual properties
+    float height = 3.0f;   // Building height in blocks
+    float width  = 2.0f;   // Building footprint in blocks  
     glm::vec3 color = glm::vec3(0.5f);
     bool hasBeacon = false;
+
+    // World position (set by WorldGenerator)
+    glm::vec3 worldPos = glm::vec3(0.0f);
 };
 
 #endif

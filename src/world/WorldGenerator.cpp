@@ -1,6 +1,7 @@
 #include "WorldGenerator.h"
 #include <algorithm>
 #include <iostream>
+#include <cmath>
 
 bool compareVec3(const glm::ivec3& a, const glm::ivec3& b) {
     if (a.x != b.x) return a.x < b.x;
@@ -27,92 +28,161 @@ void WorldGenerator::setBlockWorld(int x, int y, int z, BlockType type) {
 }
 
 void WorldGenerator::placeBuilding(const RepoData& repo, int startX, int startZ) {
-    int width = (int)std::ceil(repo.width);
-    int height = (int)std::ceil(repo.height);
+    int w  = (int)std::ceil(repo.width);
+    int h  = (int)std::ceil(repo.height);
+    if (w < 3) w = 3;
+    if (h < 4) h = 4;
     
-    // Base/Footprint
-    for (int x = 0; x < width; x++) {
-        for (int z = 0; z < width; z++) {
-            // Foundation
+    for (int x = 0; x < w; x++) {
+        for (int z = 0; z < w; z++) {
+            // Foundation (2 layers of stone)
             setBlockWorld(startX + x, 0, startZ + z, STONE);
-            // Walls - with windows
-            for (int y = 1; y < height; y++) {
-                if (x == 0 || x == width - 1 || z == 0 || z == width - 1) {
-                    bool isWindow = ((y % 3 == 0) && ((x + z) % 2 == 0)); // Stylized pattern
-                    setBlockWorld(startX + x, y, startZ + z, isWindow ? WINDOW : BRICK);
+            setBlockWorld(startX + x, 1, startZ + z, STONE);
+            
+            // Walls with windows
+            for (int y = 2; y < h; y++) {
+                bool isEdge = (x == 0 || x == w-1 || z == 0 || z == w-1);
+                if (isEdge) {
+                    // Window pattern: every 3rd row, alternating columns
+                    bool isWin = (y % 3 == 0) && ((x + z) % 2 == 0);
+                    setBlockWorld(startX + x, y, startZ + z, isWin ? WINDOW : BRICK);
                 } else {
-                    setBlockWorld(startX + x, y, startZ + z, STONE); // Core
+                    // Interior floor every 3 blocks
+                    if (y % 3 == 0)
+                        setBlockWorld(startX + x, y, startZ + z, STONE);
+                    // else AIR (interior gap)
                 }
             }
             // Roof
-            setBlockWorld(startX + x, height, startZ + z, METAL);
+            setBlockWorld(startX + x, h, startZ + z, METAL);
         }
     }
     
-    // Glowing beacon if open issues (Git-City reference)
+    // Beacon tower if open issues
     if (repo.hasBeacon) {
-        for (int b = 1; b < 5; b++) {
-             setBlockWorld(startX + width/2, height + b, startZ + width/2, GLASS); 
+        int cx = startX + w/2;
+        int cz = startZ + w/2;
+        for (int b = 1; b <= 4; b++) {
+            setBlockWorld(cx, h + b, cz, GLASS);
         }
-        setBlockWorld(startX + width/2, height + 5, startZ + width/2, WINDOW); // Glowing cap
+        setBlockWorld(cx, h + 5, cz, WINDOW); // Glowing cap
     }
+}
+
+// Language to biome block type mapping
+BlockType WorldGenerator::getBiomeBlock(const std::string& lang) {
+    if (lang == "Python" || lang == "Jupyter Notebook") return GRASS;
+    if (lang == "JavaScript" || lang == "TypeScript")    return ROAD;   // dark asphalt
+    if (lang == "Java" || lang == "Kotlin")              return BRICK;
+    if (lang == "C++" || lang == "C")                    return STONE;
+    if (lang == "Rust" || lang == "Go")                  return METAL;
+    if (lang == "Ruby")                                  return BRICK;
+    if (lang == "HTML" || lang == "CSS")                 return WOOD;
+    return GRASS; // default
 }
 
 void WorldGenerator::generateWorld(const std::vector<RepoData>& repoData) {
     repos = repoData;
     labels.clear();
+    std::cout << "Generating Virtual Earth..." << std::endl;
     
-    // Group by language (each is a country/island)
+    // Group by language
     std::map<std::string, std::vector<RepoData>> langGroups;
     for (const auto& r : repos) {
         langGroups[r.language].push_back(r);
     }
     
-    int countryX = 0;
-    int countryZ = 0;
-    int countriesPerRow = (int)std::sqrt(langGroups.size());
-    if (countriesPerRow < 1) countriesPerRow = 1;
+    int numCountries = langGroups.size();
+    int countriesPerRow = std::max(1, (int)std::ceil(std::sqrt(numCountries)));
+    int spacing = 120; // Space between country centers
     
     int count = 0;
-    for (auto const& [lang, langRepos] : langGroups) {
-        // Space countries much further apart (e.g. 1000 units)
-        int startX = (count % countriesPerRow) * 1000;
-        int startZ = (count / countriesPerRow) * 1000;
+    for (auto& [lang, langRepos] : langGroups) {
+        int originX = (count % countriesPerRow) * spacing;
+        int originZ = (count / countriesPerRow) * spacing;
         
-        // ISLAND Base
-        for (int x = -20; x < 80; x++) {
-            for (int z = -20; z < 80; z++) {
-                setBlockWorld(startX + x, -1, startZ + z, GRASS);
+        BlockType ground = getBiomeBlock(lang);
+        
+        // --- ISLAND BASE (80x80 blocks) ---
+        int islandSize = 80;
+        for (int x = 0; x < islandSize; x++) {
+            for (int z = 0; z < islandSize; z++) {
+                // Rounded island shape (ellipse)
+                float dx = (x - islandSize/2.0f) / (islandSize/2.0f);
+                float dz = (z - islandSize/2.0f) / (islandSize/2.0f);
+                if (dx*dx + dz*dz > 1.0f) continue; // skip corners for round island
+                
+                setBlockWorld(originX + x, 0, originZ + z, ground);
+                setBlockWorld(originX + x, -1, originZ + z, STONE);
             }
         }
         
-        // Country Label (visible from height)
-        labels.push_back({ "The Land of " + lang, glm::vec3(startX + 30, 40, startZ + 30) });
+        // Country label
+        labels.push_back({ lang, glm::vec3(originX + islandSize/2, 50, originZ + islandSize/2), true });
 
-        // Place buildings within the country
-        int curX_off = 5;
-        int curZ_off = 5;
-        for (const auto& repo : langRepos) {
-            placeBuilding(repo, startX + curX_off, startZ + curZ_off);
+        // --- PLACE BUILDINGS on the island ---
+        int bx = 8, bz = 8; // building placement offset
+        for (auto& repo : langRepos) {
+            int w = (int)std::ceil(repo.width);
             
-            // Track building labels (only visible zoomed in)
-            labels.push_back({ repo.name, glm::vec3(startX + curX_off + repo.width/2.0f, repo.height + 2.0f, startZ + curZ_off + repo.width/2.0f) });
+            // Record world position on the repo
+            repo.worldPos = glm::vec3(originX + bx + w/2.0f, 0, originZ + bz + w/2.0f);
+            
+            placeBuilding(repo, originX + bx, originZ + bz);
+            
+            // Repo label (floating above building)
+            labels.push_back({ repo.name, glm::vec3(originX + bx + w/2.0f, repo.height + 3.0f, originZ + bz + w/2.0f), false });
 
-            curZ_off += (int)repo.width + 12;
-            if (curZ_off > 60) {
-                curZ_off = 5;
-                curX_off += 25;
+            bz += w + 5;
+            if (bz + w > islandSize - 8) {
+                bz = 8;
+                bx += 18;
             }
+            if (bx + w > islandSize - 8) break; // island full
         }
         count++;
     }
 
-    // Add a GIANT Water Floor (The "Ocean")
-    for (int x = -2000; x < 5000; x += 32) {
-        for (int z = -2000; z < 5000; z += 32) {
-             setBlockWorld(x, -2, z, WATER); 
+    // --- OCEAN: fill water around all islands ---
+    // Determine bounding box of all islands
+    int totalW = countriesPerRow * spacing + 80;
+    int totalH = ((numCountries + countriesPerRow - 1) / countriesPerRow) * spacing + 80;
+    int pad = 60;
+    
+    std::cout << "Generating ocean (" << (totalW + 2*pad) << "x" << (totalH + 2*pad) << " blocks)..." << std::endl;
+    for (int x = -pad; x < totalW + pad; x++) {
+        for (int z = -pad; z < totalH + pad; z++) {
+            // Only place water if there's no land above
+            glm::ivec3 cpos;
+            // Check if y=0 has a block already (quick chunk lookup)
+            int cx = (x >= 0) ? x / Chunk::SIZE : (x - Chunk::SIZE + 1) / Chunk::SIZE;
+            int cz = (z >= 0) ? z / Chunk::SIZE : (z - Chunk::SIZE + 1) / Chunk::SIZE;
+            glm::ivec3 chunkKey(cx * Chunk::SIZE, 0, cz * Chunk::SIZE);
+            
+            bool hasLand = false;
+            auto it = chunks.find(chunkKey);
+            if (it != chunks.end()) {
+                int lx = x - chunkKey.x;
+                int lz = z - chunkKey.z;
+                if (lx >= 0 && lx < Chunk::SIZE && lz >= 0 && lz < Chunk::SIZE) {
+                    if (it->second->getBlock(lx, 0, lz) != AIR) {
+                        hasLand = true;
+                    }
+                }
+            }
+            
+            if (!hasLand) {
+                setBlockWorld(x, -1, z, WATER);
+            }
         }
     }
+    
+    // Generate all chunk meshes
+    std::cout << "Building meshes for " << chunks.size() << " chunks..." << std::endl;
+    for (auto& [pos, chunk] : chunks) {
+        chunk->generateMesh();
+    }
+    std::cout << "World generation complete!" << std::endl;
 }
 
 void WorldGenerator::draw(const glm::mat4& view, const glm::mat4& projection) {
