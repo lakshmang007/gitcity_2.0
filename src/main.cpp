@@ -102,22 +102,38 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 int main() {
     // --- INPUT ---
     std::string input;
-    std::cout << "========================================" << std::endl;
-    std::cout << "    GitCity: Virtual Earth Explorer     " << std::endl;
-    std::cout << "========================================" << std::endl;
-    std::cout << "Enter GitHub username or profile link: " << std::flush;
+    std::cout << "\n";
+    std::cout << "  ================================================" << std::endl;
+    std::cout << "       GitCity: Virtual Earth Explorer              " << std::endl;
+    std::cout << "  ================================================" << std::endl;
+    std::cout << "   Your GitHub profile as a fantasy world map!      " << std::endl;
+    std::cout << "  ------------------------------------------------" << std::endl;
+    std::cout << "\n";
+    std::cout << "  Paste your GitHub profile link" << std::endl;
+    std::cout << "  (e.g. https://github.com/octocat)" << std::endl;
+    std::cout << "\n";
+    std::cout << "  > " << std::flush;
     std::cin >> input;
 
+    // Extract username from URL or use as-is
     std::string username = input;
-    size_t pos = input.find("github.com/");
+    // Remove trailing slashes, .git suffix
+    while (!username.empty() && username.back() == '/') username.pop_back();
+    if (username.size() > 4 && username.substr(username.size() - 4) == ".git")
+        username = username.substr(0, username.size() - 4);
+    // Extract from github.com URL
+    size_t pos = username.find("github.com/");
     if (pos != std::string::npos) {
-        username = input.substr(pos + 11);
+        username = username.substr(pos + 11);
         size_t slash = username.find("/");
         if (slash != std::string::npos) username = username.substr(0, slash);
     }
 
+    std::cout << "\n  Building world for: " << username << std::endl;
+    std::cout << "\n";
+
     // --- FETCH ---
-    std::cout << "Fetching repositories for '" << username << "'..." << std::endl;
+    std::cout << "  Fetching repositories..." << std::endl;
     std::vector<RepoData> repos = GitHubAPI::fetchUserRepos(username);
     if (repos.empty()) {
         std::cerr << "No repos found. Using demo data." << std::endl;
