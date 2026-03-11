@@ -25,6 +25,7 @@ std::string GitHubAPI::performGetRequest(const std::string& url) {
         curl_easy_setopt(curl, CURLOPT_USERAGENT, "GitCity-App");
         curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1L);
         curl_easy_setopt(curl, CURLOPT_TIMEOUT, 15L);
+        curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L); // Disable SSL verification on Windows
 
         res = curl_easy_perform(curl);
         if (res != CURLE_OK) {
