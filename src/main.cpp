@@ -16,7 +16,7 @@
 const unsigned int SCR_WIDTH = 1280;
 const unsigned int SCR_HEIGHT = 720;
 
-// Camera & Player
+// Camera
 Camera camera(glm::vec3(60.0f, 80.0f, 60.0f));
 Player player(camera);
 float lastX = SCR_WIDTH / 2.0f;
@@ -27,9 +27,9 @@ bool firstMouse = true;
 float deltaTime = 0.0f;
 float lastFrame = 0.0f;
 
-// View state
-bool isGlobeView = true;
-float flySpeed = 50.0f;  // Much faster for large worlds!
+// State
+float flySpeed = 40.0f;
+bool showLegend = true;
 
 float skyboxVertices[] = {
     -1.0f,  1.0f, -1.0f, -1.0f, -1.0f, -1.0f,  1.0f, -1.0f, -1.0f,
@@ -51,9 +51,6 @@ void processInput(GLFWwindow *window) {
         glfwSetWindowShouldClose(window, true);
 
     float speed = flySpeed * deltaTime;
-    
-    // In globe view: always fly freely (no gravity)
-    // Compute horizontal forward (ignore pitch for XZ movement)
     glm::vec3 flatFront = glm::normalize(glm::vec3(camera.Front.x, 0.0f, camera.Front.z));
     
     if (glfwGetKey(window, GLFW_KEY_W) == GLFW_PRESS)
@@ -71,30 +68,30 @@ void processInput(GLFWwindow *window) {
     
     // Speed control
     if (glfwGetKey(window, GLFW_KEY_Q) == GLFW_PRESS)
-        flySpeed = std::max(5.0f, flySpeed - 0.5f);
+        flySpeed = std::max(5.0f, flySpeed - 0.3f);
     if (glfwGetKey(window, GLFW_KEY_E) == GLFW_PRESS)
-        flySpeed = std::min(200.0f, flySpeed + 0.5f);
-        
-    // Prevent going below water
+        flySpeed = std::min(200.0f, flySpeed + 0.3f);
+
+    // Toggle legend
+    static bool tabPressed = false;
+    if (glfwGetKey(window, GLFW_KEY_TAB) == GLFW_PRESS) {
+        if (!tabPressed) { showLegend = !showLegend; tabPressed = true; }
+    } else { tabPressed = false; }
+    
     if (camera.Position.y < 1.0f) camera.Position.y = 1.0f;
 }
 
 void mouse_callback(GLFWwindow* window, double xpos, double ypos) {
-    if (firstMouse) {
-        lastX = xpos;
-        lastY = ypos;
-        firstMouse = false;
-    }
+    if (firstMouse) { lastX = xpos; lastY = ypos; firstMouse = false; }
     float xoffset = xpos - lastX;
-    float yoffset = lastY - ypos; 
+    float yoffset = lastY - ypos;
     lastX = xpos;
     lastY = ypos;
     camera.ProcessMouseMovement(xoffset, yoffset);
 }
 
 void scroll_callback(GLFWwindow* window, double xoffset, double yoffset) {
-    // Scroll = move up/down quickly (zoom)
-    camera.Position.y -= yoffset * 10.0f;
+    camera.Position.y -= yoffset * 8.0f;
     if (camera.Position.y < 1.0f) camera.Position.y = 1.0f;
 }
 
@@ -103,9 +100,11 @@ void framebuffer_size_callback(GLFWwindow* window, int width, int height) {
 }
 
 int main() {
-    // --- USERNAME INPUT ---
+    // --- INPUT ---
     std::string input;
-    std::cout << "=== GitCity: Virtual Earth ===" << std::endl;
+    std::cout << "========================================" << std::endl;
+    std::cout << "    GitCity: Virtual Earth Explorer     " << std::endl;
+    std::cout << "========================================" << std::endl;
     std::cout << "Enter GitHub username or profile link: " << std::flush;
     std::cin >> input;
 
@@ -117,35 +116,31 @@ int main() {
         if (slash != std::string::npos) username = username.substr(0, slash);
     }
 
-    // --- FETCH DATA ---
-    std::cout << "Fetching repositories for " << username << "..." << std::endl;
+    // --- FETCH ---
+    std::cout << "Fetching repositories for '" << username << "'..." << std::endl;
     std::vector<RepoData> repos = GitHubAPI::fetchUserRepos(username);
     if (repos.empty()) {
-        std::cerr << "No repositories found. Creating demo world." << std::endl;
-        RepoData dummy; dummy.name = "example-repo"; dummy.language = "Unknown";
-        dummy.height = 8; dummy.width = 4;
-        repos.push_back(dummy);
+        std::cerr << "No repos found. Using demo data." << std::endl;
+        RepoData d; d.name = "demo-repo"; d.language = "Unknown"; d.height = 8; d.width = 4;
+        repos.push_back(d);
     }
 
-    // --- INIT GLFW/OPENGL ---
-    if (!glfwInit()) { std::cerr << "GLFW init failed" << std::endl; return -1; }
+    // --- INIT ---
+    if (!glfwInit()) { std::cerr << "GLFW failed" << std::endl; return -1; }
     glfwWindowHint(GLFW_CONTEXT_VERSION_MAJOR, 3);
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
-    glfwWindowHint(GLFW_SAMPLES, 4); // MSAA
+    glfwWindowHint(GLFW_SAMPLES, 4);
 
     GLFWwindow* window = glfwCreateWindow(SCR_WIDTH, SCR_HEIGHT, "GitCity - Virtual Earth", NULL, NULL);
-    if (!window) { std::cerr << "Window creation failed" << std::endl; glfwTerminate(); return -1; }
+    if (!window) { glfwTerminate(); return -1; }
     glfwMakeContextCurrent(window);
     glfwSetFramebufferSizeCallback(window, framebuffer_size_callback);
     glfwSetCursorPosCallback(window, mouse_callback);
     glfwSetScrollCallback(window, scroll_callback);
     glfwSetInputMode(window, GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 
-    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) { 
-        std::cerr << "GLAD init failed" << std::endl; return -1; 
-    }
-
+    if (!gladLoadGL((GLADloadfunc)glfwGetProcAddress)) { return -1; }
     glEnable(GL_DEPTH_TEST);
     glEnable(GL_MULTISAMPLE);
     glEnable(GL_BLEND);
@@ -153,11 +148,9 @@ int main() {
     
     BuildingUI::init(window);
 
-    // --- SHADERS ---
     Shader blockShader("shaders/block.vert", "shaders/block.frag");
     Shader skyboxShader("shaders/skybox.vert", "shaders/skybox.frag");
 
-    // --- SKYBOX VAO ---
     unsigned int skyboxVAO, skyboxVBO;
     glGenVertexArrays(1, &skyboxVAO);
     glGenBuffers(1, &skyboxVBO);
@@ -171,16 +164,23 @@ int main() {
     WorldGenerator world;
     world.generateWorld(repos);
     
-    // Set initial camera above the center of the world
-    camera.Position = glm::vec3(60.0f, 120.0f, 60.0f);
-    camera.Pitch = -45.0f;
+    // Camera: start above the center of the map looking down
+    float camX = 0, camZ = 0;
+    for (auto& c : world.getCountries()) {
+        camX += c.center.x;
+        camZ += c.center.y;
+    }
+    camX /= std::max(1, (int)world.getCountries().size());
+    camZ /= std::max(1, (int)world.getCountries().size());
+    
+    camera.Position = glm::vec3(camX, 150.0f, camZ + 50.0f);
+    camera.Pitch = -50.0f;
     camera.Yaw = -90.0f;
-    camera.MovementSpeed = flySpeed;
     camera.updateCameraVectors();
     
     std::cout << "\n=== CONTROLS ===" << std::endl;
     std::cout << "WASD = Fly | Space/Shift = Up/Down | Mouse = Look" << std::endl;
-    std::cout << "Scroll = Quick zoom | Q/E = Slow/Fast speed" << std::endl;
+    std::cout << "Scroll = Quick zoom | Q/E = Speed | TAB = Toggle legend" << std::endl;
     std::cout << "ESC = Exit" << std::endl;
     std::cout << "================\n" << std::endl;
 
@@ -192,39 +192,35 @@ int main() {
 
         processInput(window);
 
-        // Clear
-        glClearColor(0.55f, 0.70f, 0.85f, 1.0f); // Match fog color
+        glClearColor(0.55f, 0.70f, 0.85f, 1.0f);
         glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
         glm::mat4 projection = glm::perspective(
-            glm::radians(camera.Zoom), 
-            (float)SCR_WIDTH / (float)SCR_HEIGHT, 
-            0.5f, 2000.0f  // MUCH larger far plane
-        );
+            glm::radians(camera.Zoom), (float)SCR_WIDTH / (float)SCR_HEIGHT, 0.5f, 2000.0f);
         glm::mat4 view = camera.GetViewMatrix();
 
-        // --- SKYBOX (rendered first, depth = far) ---
+        // Skybox
         glDepthFunc(GL_LEQUAL);
         skyboxShader.use();
-        skyboxShader.setMat4("view", glm::mat4(glm::mat3(view))); // Remove translation
+        skyboxShader.setMat4("view", glm::mat4(glm::mat3(view)));
         skyboxShader.setMat4("projection", projection);
         glBindVertexArray(skyboxVAO);
         glDrawArrays(GL_TRIANGLES, 0, 36);
         glDepthFunc(GL_LESS);
 
-        // --- VOXEL WORLD ---
+        // World
         blockShader.use();
         blockShader.setMat4("projection", projection);
         blockShader.setMat4("view", view);
         blockShader.setMat4("model", glm::mat4(1.0f));
-        blockShader.setVec3("viewPos", camera.Position);  // THIS WAS MISSING!
+        blockShader.setVec3("viewPos", camera.Position);
         blockShader.setFloat("time", currentFrame);
         world.draw(view, projection);
 
-        // --- IMGUI HUD ---
-        // Find nearest building to camera
+        // --- UI ---
+        // Find nearest repo building
         float nearestDist = 999999.0f;
-        int nearestIdx = 0;
+        int nearestIdx = -1;
         for (int i = 0; i < (int)repos.size(); i++) {
             float d = glm::distance(camera.Position, repos[i].worldPos);
             if (d < nearestDist) {
@@ -232,8 +228,13 @@ int main() {
                 nearestIdx = i;
             }
         }
-        if (nearestDist < 50.0f) {
+        
+        if (nearestDist < 30.0f && nearestIdx >= 0) {
+            // Show repo details when close
             BuildingUI::render(repos[nearestIdx]);
+        } else if (showLegend) {
+            // Show the legend when not near a building
+            BuildingUI::renderLegend(world.getCountries());
         }
 
         glfwSwapBuffers(window);

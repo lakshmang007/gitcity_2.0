@@ -3,15 +3,15 @@
 
 #include <glad/gl.h>
 #include <GLFW/glfw3.h>
-#include <imgui.h>
-#include <imgui_impl_glfw.h>
-#include <imgui_impl_opengl3.h>
 #include "../github/RepoData.h"
+#include "../world/WorldGenerator.h"
+#include <vector>
 
 class BuildingUI {
 public:
     static void init(GLFWwindow* window);
     static void render(const RepoData& repo);
+    static void renderLegend(const std::vector<CountryInfo>& countries);
     static void shutdown();
 };
 
