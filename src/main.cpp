@@ -112,8 +112,23 @@ int main() {
     std::cout << "  Paste your GitHub profile link" << std::endl;
     std::cout << "  (e.g. https://github.com/octocat)" << std::endl;
     std::cout << "\n";
-    std::cout << "  > " << std::flush;
-    std::cin >> input;
+    std::cout << "  > ";
+    std::cout.flush();
+    
+    // Use getline to capture the full link (handles spaces, special chars)
+    std::getline(std::cin, input);
+    
+    if (input.empty()) {
+        std::cout << "  No input received. Please enter a GitHub link or username:" << std::endl;
+        std::cout << "  > ";
+        std::cout.flush();
+        std::getline(std::cin, input);
+    }
+    
+    if (input.empty()) {
+        input = "octocat"; // Fallback demo
+        std::cout << "  Using demo user: octocat" << std::endl;
+    }
 
     // Extract username from URL or use as-is
     std::string username = input;
@@ -259,5 +274,8 @@ int main() {
 
     BuildingUI::shutdown();
     glfwTerminate();
+    
+    std::cout << "\n  GitCity closed. Press Enter to exit..." << std::endl;
+    std::cin.get();
     return 0;
 }
